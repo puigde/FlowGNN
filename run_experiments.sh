@@ -36,11 +36,17 @@ run_case ()
     tput sgr0 2>/dev/null || true
 
     load_dataset "$1"
+
     (
         cd "$model"
         make host
-        ./host ./build_dir.hw.*/*_compute_graphs.xclbin
+        if [ "$3" == "hw" ]; then
+            ./host ./build_dir.hw.*/*_compute_graphs.xclbin
+        else
+            XCL_EMULATION_MODE=sw_emu ./host ./build_dir.sw_emu.*/*_compute_graphs.xclbin
+        fi
     )
+
     total="$(grep -FxA2 'Kernel Execution' "$model"/summary.csv | tail -n 1 | cut -d',' -f5)"
     graphs="$(<common/includes/dataset/dataset_size.txt)"
     result="$(awk '{ print $1, "on", $2 ":", $3 / $4, "ms" }' <<<"$model $1 $total $graphs")"
@@ -67,10 +73,11 @@ usage ()
     printf '  all               Run all experiments for all models and datasets\n'
     printf '  <dataset>         Run experiments for all models on one dataset\n'
     printf '  <model>           Run experiments for all datasets with one model\n'
-    printf '  <dataset>:<model> Run a specific experiment\n'
+    printf '  <dataset>:<model>[:<target>] Run a specific experiment\n'
     printf '\n'
     printf 'Available datasets: %s\n' "${datasets[*]}"
-    printf '  Available models: %s\n' "${models[*]}"
+    printf 'Available models: %s\n' "${models[*]}"
+    printf 'Available targets: sw_emu, hw (default: sw_emu)\n'
 }
 
 if [[ "$#" -eq 0 ]]; then
@@ -92,17 +99,24 @@ for arg in "$@"; do
         all)
             run_all
             ;;
+        *:*:*)
+            dataset="${arg%%:*}"
+            model_target="${arg#*:}"
+            model="${model_target%%:*}"
+            target="${model_target#*:}"
+            run_case "$dataset" "$model" "$target"
+            ;;
         *:*)
-            run_case "${arg%%:*}" "${arg#*:}"
+            run_case "${arg%%:*}" "${arg#*:}" "sw_emu" # Default to sw_emu
             ;;
         *)
             if [[ " ${datasets[*]} " == *" $arg "* ]]; then
                 for model in "${models[@]}"; do
-                    run_case "$arg" "$model"
+                    run_case "$arg" "$model" "sw_emu" # Default to sw_emu
                 done
             elif [[ " ${models[*]} " == *" $arg "* ]]; then
                 for dataset in "${datasets[@]}"; do
-                    run_case "$dataset" "$arg"
+                    run_case "$dataset" "$arg" "sw_emu" # Default to sw_emu
                 done
             else
                 printf 'Unknown dataset or model: %s\n' "$arg"
