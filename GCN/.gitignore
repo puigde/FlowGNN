@@ -9,3 +9,5 @@ host
 *.run_summary
 *.csv
 HLS_output.txt
+emconfig.json
+build_dir.*
