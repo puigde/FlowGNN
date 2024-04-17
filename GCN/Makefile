@@ -56,7 +56,8 @@ XF_PROJ_ROOT = $(shell readlink -f $(COMMON_REPO))
 TARGET := sw_emu
 HOST_ARCH := x86
 SYSROOT := 
-DEVICE := xilinx_u50_gen3x16_xdma_201920_3
+# DEVICE := xilinx_u50_gen3x16_xdma_201920_3
+DEVICE := xilinx_u50_gen3x16_xdma_5_202210_1
 
 include ./utils.mk
 
